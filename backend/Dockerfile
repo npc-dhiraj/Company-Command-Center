@@ -14,7 +14,8 @@ RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
 # Copy application files
 COPY app/ ./app/
 COPY tests/ ./tests/
-COPY pyproject.toml ./
+COPY migrations/ ./migrations/
+COPY alembic.ini pyproject.toml ./
 
 # Adjust ownership to non-root user
 RUN chown -R appuser:appgroup /app

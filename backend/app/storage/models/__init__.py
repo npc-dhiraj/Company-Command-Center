@@ -1,4 +1,5 @@
+from app.storage.models.refresh_token import RefreshToken
 from app.storage.models.tenant import Tenant
-from app.storage.models.user import User
+from app.storage.models.user import User, UserRole
 
-__all__ = ["Tenant", "User"]
+__all__ = ["Tenant", "User", "UserRole", "RefreshToken"]

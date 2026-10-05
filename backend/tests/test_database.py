@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 
 import pytest
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import Connection, inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
@@ -37,7 +37,12 @@ async def test_create_tenant_and_user(db_session: AsyncSession) -> None:
     assert tenant.name == "Acme Corp"
     assert tenant.is_active is True
 
-    user = User(tenant_id=tenant.id, email="alice@acme.com", full_name="Alice Smith")
+    user = User(
+        tenant_id=tenant.id,
+        email="alice@acme.com",
+        full_name="Alice Smith",
+        password_hash="dummy_hash",
+    )
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
@@ -55,12 +60,20 @@ async def test_duplicate_tenant_email_rejected(db_session: AsyncSession) -> None
     await db_session.commit()
     await db_session.refresh(tenant)
 
-    user1 = User(tenant_id=tenant.id, email="tony@stark.com", full_name="Tony Stark")
+    user1 = User(
+        tenant_id=tenant.id,
+        email="tony@stark.com",
+        full_name="Tony Stark",
+        password_hash="dummy_hash",
+    )
     db_session.add(user1)
     await db_session.commit()
 
     user2 = User(
-        tenant_id=tenant.id, email="tony@stark.com", full_name="Tony Duplicate"
+        tenant_id=tenant.id,
+        email="tony@stark.com",
+        full_name="Tony Duplicate",
+        password_hash="dummy_hash",
     )
     db_session.add(user2)
     with pytest.raises(IntegrityError):
@@ -78,8 +91,18 @@ async def test_same_email_different_tenants_allowed(db_session: AsyncSession) ->
     await db_session.refresh(tenant1)
     await db_session.refresh(tenant2)
 
-    user1 = User(tenant_id=tenant1.id, email="ceo@hero.com", full_name="Bruce Wayne")
-    user2 = User(tenant_id=tenant2.id, email="ceo@hero.com", full_name="Oliver Queen")
+    user1 = User(
+        tenant_id=tenant1.id,
+        email="ceo@hero.com",
+        full_name="Bruce Wayne",
+        password_hash="dummy_hash",
+    )
+    user2 = User(
+        tenant_id=tenant2.id,
+        email="ceo@hero.com",
+        full_name="Oliver Queen",
+        password_hash="dummy_hash",
+    )
     db_session.add_all([user1, user2])
     await db_session.commit()
 
@@ -96,8 +119,10 @@ async def test_readiness_check_success(db_session: AsyncSession) -> None:
         yield db_session
 
     app.dependency_overrides[get_session] = mock_get_session
-    client = TestClient(app)
-    response = client.get("/health/ready")
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/health/ready")
     app.dependency_overrides.clear()
 
     assert response.status_code == 200
