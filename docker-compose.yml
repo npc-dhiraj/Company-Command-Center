@@ -23,6 +23,7 @@ services:
     container_name: backend
     environment:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY environment variable is required}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY environment variable is required}
     env_file:
       - .env
     ports:

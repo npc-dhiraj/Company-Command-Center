@@ -3,8 +3,8 @@
 Company Command Center is a scalable multi-tenant SaaS platform designed to connect a company's existing applications and transform disconnected operational data into a unified intelligence system.
 
 ## Project Status
-- **Current Scope**: Phase 2 (Authentication & Tenant Resolution)
-- **Tech Stack**: Python 3.12, FastAPI, SQLAlchemy 2.x (asyncpg), PostgreSQL 16, Alembic, Docker Compose, Argon2id, PyJWT, pytest, ruff, mypy
+- **Current Scope**: Phase 3 (Connector Framework & Secure Credential Storage)
+- **Tech Stack**: Python 3.12, FastAPI, SQLAlchemy 2.x (asyncpg), PostgreSQL 16, Alembic, Docker Compose, Argon2id, PyJWT, Fernet (cryptography), pytest, ruff, mypy
 
 ## Local Setup & Development
 
@@ -14,6 +14,12 @@ Copy the `.env.example` template to create your local `.env` file:
 cp .env.example .env
 ```
 Ensure `JWT_SECRET_KEY` is set to a secret at least 32 characters long.
+
+Generate the required `ENCRYPTION_KEY` (Fernet key for credential encryption):
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+Set the generated key as `ENCRYPTION_KEY` in your `.env` file. The application will **refuse to start** without a valid key.
 
 ### 2. Start Services with Docker Compose
 Build and start the PostgreSQL database and backend service:
@@ -74,6 +80,23 @@ ACCESS_TOKEN=$(echo "$REGISTER_RESPONSE" | grep -o '"access_token":"[^"]*' | gre
 curl -s -X GET http://localhost:8000/auth/me \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
+
+---
+
+## Connector Framework
+
+The connector framework provides a generic SDK for integrating external services. In Phase 3, only the framework exists — no real integrations are implemented yet.
+
+| Endpoint | Method | Role / Access | Description |
+| :--- | :--- | :--- | :--- |
+| `/connectors` | `GET` | Authenticated | List registered connector types with metadata and credential fields |
+| `/connections` | `POST` | Owner or Admin | Create a new connection (validates and tests credentials) |
+| `/connections` | `GET` | Authenticated | List connections for caller's tenant |
+| `/connections/{id}` | `GET` | Authenticated | Get a single connection (own tenant only) |
+| `/connections/{id}/test` | `POST` | Owner or Admin | Re-test a connection and update status |
+| `/connections/{id}` | `DELETE` | Owner or Admin | Hard-delete a connection and stored credentials |
+
+Credentials are encrypted at rest using Fernet and are **never** returned by any endpoint. See `docs/connectors.md` for the full connector SDK documentation.
 
 ---
 

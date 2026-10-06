@@ -37,3 +37,23 @@
 ## 9. Login Rate Limiting Deferred
 - **Decision**: Authentication rate limiting (e.g. IP/account brute-force throttling) is deferred in Phase 2.
 - **Rationale**: Focuses scope on core authentication and tenancy structures. Timing attack mitigation via dummy password verification is implemented, with rate limiting scheduled for pre-production deployment.
+
+## 10. Fernet At-Rest Credential Encryption
+- **Decision**: Connection credentials are encrypted at rest using Fernet symmetric encryption (`cryptography` package, `MultiFernet`-compatible design). Credentials are stored as a single encrypted JSON blob per connection — never as plaintext and never in the `config` column.
+- **Rationale**: Fernet provides authenticated encryption (AES-128-CBC + HMAC-SHA256) with a simple, well-audited API. MultiFernet compatibility allows future key rotation without re-encrypting existing data. The `ENCRYPTION_KEY` environment variable is validated at startup; the application refuses to start without a valid key.
+
+## 11. Connector Provider as String, Not Database Enum
+- **Decision**: Connector providers are identified by a stable string key stored in a `VARCHAR` column, not a PostgreSQL enum type.
+- **Rationale**: Adding a new connector must not require a database migration. String columns are flexible, portable, and avoid the ALTER TYPE migration complexity of PostgreSQL enums.
+
+## 12. Test-Only Fake Connector
+- **Decision**: A `FakeConnector` exists exclusively in the test suite (`tests/fakes/fake_connector.py`). It is never registered in the production connector registry.
+- **Rationale**: Validates the connector framework end-to-end (registration, credential validation, connection testing, encryption round-trip) without requiring external service dependencies or network access in CI.
+
+## 13. Key Rotation Deferred
+- **Decision**: Credential encryption key rotation is deferred. The current implementation uses `MultiFernet` with a single key, structurally ready for rotation but only supporting one key now.
+- **Rationale**: Key rotation adds operational complexity (re-encryption scripts, key management infrastructure) that is not justified until production deployment. The MultiFernet foundation ensures rotation can be added without changing the data model.
+
+## 14. Audit Logging of Connection Changes Deferred
+- **Decision**: Audit logging for connection lifecycle events (create, test, delete) is deferred to the Security & Governance phase.
+- **Rationale**: Focuses Phase 3 scope on the connector framework and credential security. Audit logging will be implemented alongside the broader governance and compliance features.
